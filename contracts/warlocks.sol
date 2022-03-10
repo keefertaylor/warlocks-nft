@@ -53,13 +53,6 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
 
     uint256 public publicSalePrice = 0.035 ether;
 
-    uint256 public maxGiftedWarlocks;
-    uint256 public numGiftedWarlocks;
-    bytes32 public claimListMerkleRoot;
-
-    mapping(address => uint256) public communityMintCounts;
-    mapping(address => bool) public claimed;
-
     // ============ ACCESS CONTROL/SANITY MODIFIERS ============
 
     modifier maxWarlocksPerWallet(uint256 numberOfTokens) {
@@ -72,24 +65,12 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
 
     modifier canMintWarlocks(uint256 numberOfTokens) {
         require(
-            tokenCounter.current() + numberOfTokens <=
-                maxWarlocks - maxGiftedWarlocks,
+            tokenCounter.current() + numberOfTokens <= maxWarlocks,
             "Not enough warlocks remaining to mint"
         );
         _;
     }
 
-    modifier canGiftWarlocks(uint256 num) {
-        require(
-            numGiftedWarlocks + num <= maxGiftedWarlocks,
-            "Not enough warlocks remaining to gift"
-        );
-        require(
-            tokenCounter.current() + num <= maxWarlocks,
-            "Not enough warlocks remaining to mint"
-        );
-        _;
-    }
 
     modifier isCorrectPayment(uint256 price, uint256 numberOfTokens) {
         require(
@@ -111,15 +92,12 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
         _;
     }
 
-
     constructor(
         address _openSeaProxyRegistryAddress,
-        uint256 _maxWarlocks,
-        uint256 _maxGiftedWarlocks
+        uint256 _maxWarlocks
     ) ERC721("Crypto Coven", "WARLOCK") {
         openSeaProxyRegistryAddress = _openSeaProxyRegistryAddress;
         maxWarlocks = _maxWarlocks;
-        maxGiftedWarlocks = _maxGiftedWarlocks;
     }
 
     // ============ PUBLIC FUNCTIONS FOR MINTING ============
@@ -135,19 +113,6 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
         for (uint256 i = 0; i < numberOfTokens; i++) {
             _safeMint(msg.sender, nextTokenId());
         }
-    }
-
-    function claim(bytes32[] calldata merkleProof)
-        external
-        isValidMerkleProof(merkleProof, claimListMerkleRoot)
-        canGiftWarlocks(1)
-    {
-        require(!claimed[msg.sender], "Warlock already claimed by this wallet");
-
-        claimed[msg.sender] = true;
-        numGiftedWarlocks += 1;
-
-        _safeMint(msg.sender, nextTokenId());
     }
 
     // ============ PUBLIC READ-ONLY FUNCTIONS ============
@@ -179,37 +144,6 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
         isOpenSeaProxyActive = _isOpenSeaProxyActive;
     }
 
-    function setClaimListMerkleRoot(bytes32 merkleRoot) external onlyOwner {
-        claimListMerkleRoot = merkleRoot;
-    }
-
-    function reserveForGifting(uint256 numToReserve)
-        external
-        nonReentrant
-        onlyOwner
-        canGiftWarlocks(numToReserve)
-    {
-        numGiftedWarlocks += numToReserve;
-
-        for (uint256 i = 0; i < numToReserve; i++) {
-            _safeMint(msg.sender, nextTokenId());
-        }
-    }
-
-    function giftWarlocks(address[] calldata addresses)
-        external
-        nonReentrant
-        onlyOwner
-        canGiftWarlocks(addresses.length)
-    {
-        uint256 numToGift = addresses.length;
-        numGiftedWarlocks += numToGift;
-
-        for (uint256 i = 0; i < numToGift; i++) {
-            _safeMint(addresses[i], nextTokenId());
-        }
-    }
-
     function withdraw() public onlyOwner {
         uint256 balance = address(this).balance;
         payable(msg.sender).transfer(balance);
@@ -218,24 +152,6 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
     function withdrawTokens(IERC20 token) public onlyOwner {
         uint256 balance = token.balanceOf(address(this));
         token.transfer(msg.sender, balance);
-    }
-
-    function rollOverWarlocks(address[] calldata addresses)
-        external
-        nonReentrant
-        onlyOwner
-    {
-        require(
-            tokenCounter.current() + addresses.length <= 128,
-            "All warlocks are already rolled over"
-        );
-
-        for (uint256 i = 0; i < addresses.length; i++) {
-            communityMintCounts[addresses[i]] += 1;
-            // use mint rather than _safeMint here to reduce gas costs
-            // and prevent this from failing in case of grief attempts
-            _mint(addresses[i], nextTokenId());
-        }
     }
 
     // ============ SUPPORTING FUNCTIONS ============
