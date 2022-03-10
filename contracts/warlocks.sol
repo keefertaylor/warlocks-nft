@@ -53,6 +53,9 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
 
     uint256 public publicSalePrice = 0.035 ether;
 
+    // Amount for royalty, as a percent
+    uint8 public royalty = 1;
+
     // ============ ACCESS CONTROL/SANITY MODIFIERS ============
 
     modifier maxWarlocksPerWallet(uint256 numberOfTokens) {
@@ -133,6 +136,10 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
 
     function setPrice(uint256 _newPrice) external onlyOwner {
         publicSalePrice = _newPrice;
+    }
+
+    function setRoyalty(uint8 _newRoyalty) external onlyOwner {
+        royalty = _newRoyalty;
     }
 
     // function to disable gasless listings for security in case
@@ -226,7 +233,7 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
     {
         require(_exists(tokenId), "Nonexistent token");
 
-        return (address(this), SafeMath.div(SafeMath.mul(salePrice, 5), 100));
+        return (address(this), SafeMath.div(SafeMath.mul(salePrice, royalty), 100));
     }
 }
 
