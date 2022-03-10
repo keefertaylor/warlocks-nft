@@ -37,6 +37,8 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
+// TODO: can we set the owner up again? Can we initialize with a default owner?
+
 contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
     using Counters for Counters.Counter;
     using Strings for uint256;
@@ -48,12 +50,38 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
     address private openSeaProxyRegistryAddress;
     bool private isOpenSeaProxyActive = true;
 
+    // TODO(keefertaylor): remove cap
     uint256 public constant MAX_WARLOCKS_PER_WALLET = 99;
     uint256 public maxWarlocks;
 
     uint256 public publicSalePrice = 0.035 ether;
 
+    // Array of addresses that can gift
+    address[] giftAddresses;
+
+    // Mapping of addresses eligible to claim to whether or not they've claimd
+    mapping(address => bool) public giftsClaimed;
+
+
     // ============ ACCESS CONTROL/SANITY MODIFIERS ============
+
+    modifier canClaimGift {
+      // Check if the user was ever eligible to claim a gift
+      bool found = false;
+      for (uint i = 0; i < giftAddresses.length; ++i) {
+        // Sender is in the gift addresses list
+        if (giftAddresses[i] == msg.sender) {
+          found = true;
+        }
+      }
+      require(found == true, "Not in the giftable list");
+
+      // Check if the user has already claimed
+      require(giftsClaimed[msg.sender] == false, "Already claimed!");
+
+      _;
+    }
+
 
     modifier maxWarlocksPerWallet(uint256 numberOfTokens) {
         require(
@@ -94,10 +122,17 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
 
     constructor(
         address _openSeaProxyRegistryAddress,
-        uint256 _maxWarlocks
+        uint256 _maxWarlocks,
+        address[] memory _giftAddresses
     ) ERC721("Crypto Coven", "WARLOCK") {
         openSeaProxyRegistryAddress = _openSeaProxyRegistryAddress;
         maxWarlocks = _maxWarlocks;
+
+        giftAddresses = _giftAddresses;
+        for (uint i = 0; i < _giftAddresses.length; ++i) {
+          giftsClaimed[_giftAddresses[i]] = false;
+        }
+
     }
 
     // ============ PUBLIC FUNCTIONS FOR MINTING ============
@@ -113,6 +148,14 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
         for (uint256 i = 0; i < numberOfTokens; i++) {
             _safeMint(msg.sender, nextTokenId());
         }
+    }
+
+    function claimGift() external payable nonReentrant canClaimGift canMintWarlocks(1) {
+      // Mark gift as claimed
+      giftsClaimed[msg.sender] = true;
+
+      // Mint the gift
+      _safeMint(msg.sender, nextTokenId());
     }
 
     // ============ PUBLIC READ-ONLY FUNCTIONS ============
