@@ -71,23 +71,10 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
         _;
     }
 
-
     modifier isCorrectPayment(uint256 price, uint256 numberOfTokens) {
         require(
             price * numberOfTokens == msg.value,
             "Incorrect ETH value sent"
-        );
-        _;
-    }
-
-    modifier isValidMerkleProof(bytes32[] calldata merkleProof, bytes32 root) {
-        require(
-            MerkleProof.verify(
-                merkleProof,
-                root,
-                keccak256(abi.encodePacked(msg.sender))
-            ),
-            "Address does not exist in list"
         );
         _;
     }
