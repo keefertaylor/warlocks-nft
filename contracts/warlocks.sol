@@ -42,7 +42,6 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
 
     Counters.Counter private tokenCounter;
 
-    // TODO(keefertaylor): remove 
     string private baseURI;
     address private openSeaProxyRegistryAddress;
     bool private isOpenSeaProxyActive = true;
@@ -120,11 +119,13 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
     constructor(
         address _openSeaProxyRegistryAddress,
         uint256 _maxWarlocks,
-        uint256 _maxGiftedWarlocks
+        uint256 _maxGiftedWarlocks,
+        string _baseURI
     ) ERC721("Crypto Coven", "WARLOCK") {
         openSeaProxyRegistryAddress = _openSeaProxyRegistryAddress;
         maxWarlocks = _maxWarlocks;
         maxGiftedWarlocks = _maxGiftedWarlocks;
+        baseURI = _baseURI;
     }
 
     // ============ PUBLIC FUNCTIONS FOR MINTING ============
