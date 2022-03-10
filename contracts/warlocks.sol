@@ -19,6 +19,10 @@ pragma solidity ^0.8.0;
 .・。.・゜✭・.・✫・゜・。..・。.・゜✭・.・✫・゜・。.✭・.・✫・゜・。..・✫・゜・。.・。.・゜✭・.・✫・゜・。..・。.・゜✭・.・✫・゜・。.✭・.・✫・゜・。..・✫・゜・。
 */
 
+// TODOs
+// - Gnosis safe
+// - Hardcode addresses
+
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
@@ -40,7 +44,6 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
 
     // TODO(keefertaylor): remove 
     string private baseURI;
-    string public verificationHash;
     address private openSeaProxyRegistryAddress;
     bool private isOpenSeaProxyActive = true;
 
@@ -49,11 +52,6 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
 
     uint256 public publicSalePrice = 0.035 ether;
     bool public isPublicSaleActive;
-
-    uint256 public constant COMMUNITY_SALE_PRICE = 0.035 ether;
-    uint256 public maxCommunitySaleWarlocks;
-    bytes32 public communitySaleMerkleRoot;
-    bool public isCommunitySaleActive;
 
     uint256 public maxGiftedWarlocks;
     uint256 public numGiftedWarlocks;
@@ -66,11 +64,6 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
 
     modifier publicSaleActive() {
         require(isPublicSaleActive, "Public sale is not open");
-        _;
-    }
-
-    modifier communitySaleActive() {
-        require(isCommunitySaleActive, "Community sale is not open");
         _;
     }
 
@@ -127,12 +120,10 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
     constructor(
         address _openSeaProxyRegistryAddress,
         uint256 _maxWarlocks,
-        uint256 _maxCommunitySaleWarlocks,
         uint256 _maxGiftedWarlocks
     ) ERC721("Crypto Coven", "WARLOCK") {
         openSeaProxyRegistryAddress = _openSeaProxyRegistryAddress;
         maxWarlocks = _maxWarlocks;
-        maxCommunitySaleWarlocks = _maxCommunitySaleWarlocks;
         maxGiftedWarlocks = _maxGiftedWarlocks;
     }
 
@@ -147,37 +138,6 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
         canMintWarlocks(numberOfTokens)
         maxWarlocksPerWallet(numberOfTokens)
     {
-        for (uint256 i = 0; i < numberOfTokens; i++) {
-            _safeMint(msg.sender, nextTokenId());
-        }
-    }
-
-    function mintCommunitySale(
-        uint8 numberOfTokens,
-        bytes32[] calldata merkleProof
-    )
-        external
-        payable
-        nonReentrant
-        communitySaleActive
-        canMintWarlocks(numberOfTokens)
-        isCorrectPayment(COMMUNITY_SALE_PRICE, numberOfTokens)
-        isValidMerkleProof(merkleProof, communitySaleMerkleRoot)
-    {
-        uint256 numAlreadyMinted = communityMintCounts[msg.sender];
-
-        require(
-            numAlreadyMinted + numberOfTokens <= MAX_WARLOCKS_PER_WALLET,
-            "Max warlocks to mint in community sale is three"
-        );
-
-        require(
-            tokenCounter.current() + numberOfTokens <= maxCommunitySaleWarlocks,
-            "Not enough warlocks remaining to mint"
-        );
-
-        communityMintCounts[msg.sender] = numAlreadyMinted + numberOfTokens;
-
         for (uint256 i = 0; i < numberOfTokens; i++) {
             _safeMint(msg.sender, nextTokenId());
         }
@@ -225,29 +185,11 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
         isOpenSeaProxyActive = _isOpenSeaProxyActive;
     }
 
-    function setVerificationHash(string memory _verificationHash)
-        external
-        onlyOwner
-    {
-        verificationHash = _verificationHash;
-    }
-
     function setIsPublicSaleActive(bool _isPublicSaleActive)
         external
         onlyOwner
     {
         isPublicSaleActive = _isPublicSaleActive;
-    }
-
-    function setIsCommunitySaleActive(bool _isCommunitySaleActive)
-        external
-        onlyOwner
-    {
-        isCommunitySaleActive = _isCommunitySaleActive;
-    }
-
-    function setCommunityListMerkleRoot(bytes32 merkleRoot) external onlyOwner {
-        communitySaleMerkleRoot = merkleRoot;
     }
 
     function setClaimListMerkleRoot(bytes32 merkleRoot) external onlyOwner {
