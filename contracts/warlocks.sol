@@ -22,6 +22,7 @@ pragma solidity ^0.8.0;
 // TODOs
 // - Gnosis safe
 // - Hardcode addresses
+// - Allow price updates
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
@@ -51,7 +52,6 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
     uint256 public maxWarlocks;
 
     uint256 public publicSalePrice = 0.035 ether;
-    bool public isPublicSaleActive;
 
     uint256 public maxGiftedWarlocks;
     uint256 public numGiftedWarlocks;
@@ -61,11 +61,6 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
     mapping(address => bool) public claimed;
 
     // ============ ACCESS CONTROL/SANITY MODIFIERS ============
-
-    modifier publicSaleActive() {
-        require(isPublicSaleActive, "Public sale is not open");
-        _;
-    }
 
     modifier maxWarlocksPerWallet(uint256 numberOfTokens) {
         require(
@@ -134,7 +129,6 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
         payable
         nonReentrant
         isCorrectPayment(publicSalePrice, numberOfTokens)
-        publicSaleActive
         canMintWarlocks(numberOfTokens)
         maxWarlocksPerWallet(numberOfTokens)
     {
@@ -183,13 +177,6 @@ contract CryptoCovmen is ERC721, IERC2981, Ownable, ReentrancyGuard {
         onlyOwner
     {
         isOpenSeaProxyActive = _isOpenSeaProxyActive;
-    }
-
-    function setIsPublicSaleActive(bool _isPublicSaleActive)
-        external
-        onlyOwner
-    {
-        isPublicSaleActive = _isPublicSaleActive;
     }
 
     function setClaimListMerkleRoot(bytes32 merkleRoot) external onlyOwner {
